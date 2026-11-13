@@ -1,0 +1,50 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "marblehead lunch",
+      "intents": [
+        {
+          "name": "GetLunchIntent",
+          "slots": [
+            { "name": "school", "type": "SchoolName" },
+            { "name": "date", "type": "AMAZON.DATE" }
+          ],
+          "samples": [
+            "what's for lunch",
+            "what's for lunch {date}",
+            "what's for lunch at {school}",
+            "what's for lunch at {school} {date}",
+            "what's for lunch {date} at {school}",
+            "what is lunch at {school} {date}",
+            "what is {school} having for lunch {date}",
+            "what's {school} lunch {date}",
+            "lunch at {school} {date}",
+            "lunch {date}",
+            "{school} lunch",
+            "{school} lunch {date}",
+            "{school}",
+            "at {school}",
+            "the {school}"
+          ]
+        },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] }
+      ],
+      "types": [
+        {
+          "name": "SchoolName",
+          "values": [
+            { "id": "brown", "name": { "value": "brown", "synonyms": ["brown school", "brown elementary"] } },
+            { "id": "glover", "name": { "value": "glover", "synonyms": ["glover school"] } },
+            { "id": "village", "name": { "value": "village", "synonyms": ["village school"] } },
+            { "id": "vets", "name": { "value": "vets", "synonyms": ["veterans", "veterans middle", "veterans middle school", "middle school"] } },
+            { "id": "high", "name": { "value": "high school", "synonyms": ["marblehead high", "marblehead high school"] } }
+          ]
+        }
+      ]
+    }
+  }
+}
