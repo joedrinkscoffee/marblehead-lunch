@@ -40,7 +40,7 @@ node try.js glover 2026-11-13
 (In a proxied sandbox, prefix with `NODE_USE_ENV_PROXY=1`.)
 
 ## Backup: host the code on Cloudflare Workers (free)
-Use this if Alexa-hosted deploys keep failing.
+Optional alternative to Alexa-hosted.
 1. Sign up at https://dash.cloudflare.com (free plan). Go to **Workers & Pages > Create > Create Worker** (start from "Hello World"), name it `marblehead-lunch`, and click **Deploy**.
 2. Click **Edit code**, replace everything with [`worker/dist/worker.js`](worker/dist/worker.js), and click **Deploy**. Copy the Worker URL (like `https://marblehead-lunch.<you>.workers.dev`).
 3. In the Alexa console, **Create Skill** again: name "Marblehead Lunch", English (US), **Other > Custom**, and for hosting choose **Provision your own** (not Alexa-hosted). Template: Start from scratch.
@@ -48,3 +48,6 @@ Use this if Alexa-hosted deploys keep failing.
 5. **Build > Endpoint**: choose **HTTPS**, paste the Worker URL as Default Region, pick "My development endpoint is a sub-domain of a domain that has a wildcard certificate from a certificate authority", and **Save Endpoints**.
 6. **Test**: set to Development and say "open marblehead lunch". Delete the old Alexa-hosted test skills so their names don't clash.
 7. Optional: in the Worker's **Settings > Variables**, add `SKILL_ID` (from the skill list) so only your skill can call it.
+
+## Notes
+- Alexa-hosted skills build and run on **Node.js 16**, so `lambda/` has no `engines` requirement and falls back to Node's `https` module when `fetch` isn't available. Keep dependencies Node 16 compatible.

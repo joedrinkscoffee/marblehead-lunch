@@ -5,7 +5,13 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __commonJS = (cb, mod) => function __require() {
+var __require = /* @__PURE__ */ ((x) => typeof require !== "undefined" ? require : typeof Proxy !== "undefined" ? new Proxy(x, {
+  get: (a, b) => (typeof require !== "undefined" ? require : a)[b]
+}) : x)(function(x) {
+  if (typeof require !== "undefined") return require.apply(this, arguments);
+  throw Error('Dynamic require of "' + x + '" is not supported');
+});
+var __commonJS = (cb, mod) => function __require2() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
 var __copyProps = (to, from, except, desc) => {
@@ -25,9 +31,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// ../lambda/menu.js
+// lambda/menu.js
 var require_menu = __commonJS({
-  "../lambda/menu.js"(exports, module) {
+  "lambda/menu.js"(exports, module) {
     var MENUTYPE_URL = "https://www.schoolnutritionandfitness.com/webmenus2/api/menutypeController.php/show";
     var GRAPHQL_URL = "https://api.schoolnutritionandfitness.com/graphql";
     var TZ = "America/New_York";
@@ -68,6 +74,36 @@ var require_menu = __commonJS({
       const d = new Date(Date.UTC(year, month, day + n));
       return { year: d.getUTCFullYear(), month: d.getUTCMonth(), day: d.getUTCDate() };
     }
+    function requestJson(url, { method = "GET", headers = {}, body } = {}) {
+      if (typeof fetch === "function") {
+        return fetch(url, { method, headers, body }).then((r) => {
+          if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
+          return r.json();
+        });
+      }
+      const https = __require("https");
+      return new Promise((resolve, reject) => {
+        const req = https.request(url, { method, headers: body ? { ...headers, "Content-Length": Buffer.byteLength(body) } : headers }, (res) => {
+          let data = "";
+          res.setEncoding("utf8");
+          res.on("data", (c) => {
+            data += c;
+          });
+          res.on("end", () => {
+            if (res.statusCode < 200 || res.statusCode >= 300) return reject(new Error(`${url} -> HTTP ${res.statusCode}`));
+            try {
+              resolve(JSON.parse(data));
+            } catch (e) {
+              reject(e);
+            }
+          });
+        });
+        req.setTimeout(6e3, () => req.destroy(new Error(`${url} timed out`)));
+        req.on("error", reject);
+        if (body) req.write(body);
+        req.end();
+      });
+    }
     var cache = /* @__PURE__ */ new Map();
     async function cached(key, ms, fn) {
       const hit = cache.get(key);
@@ -77,23 +113,17 @@ var require_menu = __commonJS({
       return v;
     }
     async function getMenuId(menuTypeId, year, month) {
-      const data = await cached(`mt:${menuTypeId}`, 60 * 60 * 1e3, async () => {
-        const r = await fetch(`${MENUTYPE_URL}?_id=${menuTypeId}`);
-        if (!r.ok) throw new Error(`menutype ${r.status}`);
-        return r.json();
-      });
+      const data = await cached(`mt:${menuTypeId}`, 60 * 60 * 1e3, () => requestJson(`${MENUTYPE_URL}?_id=${menuTypeId}`));
       const m = (data.menus || []).find((x) => +x.year === year && +x.month === month);
       return m ? m._id.$id : null;
     }
     async function getMonth(menuId) {
       return cached(`menu:${menuId}`, 60 * 60 * 1e3, async () => {
-        const r = await fetch(GRAPHQL_URL, {
+        const json = await requestJson(GRAPHQL_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json", Origin: "https://www.schoolnutritionandfitness.com" },
           body: JSON.stringify({ query: `{ menu(id:"${menuId}") { items { day product { name category } } } }` })
         });
-        if (!r.ok) throw new Error(`graphql ${r.status}`);
-        const json = await r.json();
         const byDay = {};
         for (const it of json?.data?.menu?.items || []) {
           if (!it.product?.name) continue;
@@ -155,13 +185,13 @@ var require_menu = __commonJS({
   }
 });
 
-// worker.js
+// worker/worker.js
 var import_menu = __toESM(require_menu());
 
-// dates.js
+// worker/dates.js
 var pickDate = (menu2, v) => menu2.pickDate(v);
 
-// worker.js
+// worker/worker.js
 var ASK_SCHOOL = "Which school? Brown, Glover, Village, Vets, or the high school?";
 function reply(text, { endSession = true, attributes = {} } = {}) {
   return Response.json({

@@ -39,6 +39,33 @@ function addDays({ year, month, day }, n) {
   return { year: d.getUTCFullYear(), month: d.getUTCMonth(), day: d.getUTCDate() };
 }
 
+// JSON over HTTPS. Uses global fetch when present (Node 18+, Workers); falls back to the
+// https module on Node 16, which Alexa-hosted skills run on.
+function requestJson(url, { method = 'GET', headers = {}, body } = {}) {
+  if (typeof fetch === 'function') {
+    return fetch(url, { method, headers, body }).then((r) => {
+      if (!r.ok) throw new Error(`${url} -> HTTP ${r.status}`);
+      return r.json();
+    });
+  }
+  const https = require('https');
+  return new Promise((resolve, reject) => {
+    const req = https.request(url, { method, headers: body ? { ...headers, 'Content-Length': Buffer.byteLength(body) } : headers }, (res) => {
+      let data = '';
+      res.setEncoding('utf8');
+      res.on('data', (c) => { data += c; });
+      res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) return reject(new Error(`${url} -> HTTP ${res.statusCode}`));
+        try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+      });
+    });
+    req.setTimeout(6000, () => req.destroy(new Error(`${url} timed out`)));
+    req.on('error', reject);
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
 const cache = new Map();
 async function cached(key, ms, fn) {
   const hit = cache.get(key);
@@ -49,11 +76,7 @@ async function cached(key, ms, fn) {
 }
 
 async function getMenuId(menuTypeId, year, month) {
-  const data = await cached(`mt:${menuTypeId}`, 60 * 60 * 1000, async () => {
-    const r = await fetch(`${MENUTYPE_URL}?_id=${menuTypeId}`);
-    if (!r.ok) throw new Error(`menutype ${r.status}`);
-    return r.json();
-  });
+  const data = await cached(`mt:${menuTypeId}`, 60 * 60 * 1000, () => requestJson(`${MENUTYPE_URL}?_id=${menuTypeId}`));
   const m = (data.menus || []).find((x) => +x.year === year && +x.month === month);
   return m ? m._id.$id : null;
 }
@@ -61,13 +84,11 @@ async function getMenuId(menuTypeId, year, month) {
 // Returns { [dayOfMonth]: [{ name, category }] }
 async function getMonth(menuId) {
   return cached(`menu:${menuId}`, 60 * 60 * 1000, async () => {
-    const r = await fetch(GRAPHQL_URL, {
+    const json = await requestJson(GRAPHQL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: 'https://www.schoolnutritionandfitness.com' },
       body: JSON.stringify({ query: `{ menu(id:"${menuId}") { items { day product { name category } } } }` }),
     });
-    if (!r.ok) throw new Error(`graphql ${r.status}`);
-    const json = await r.json();
     const byDay = {};
     for (const it of json?.data?.menu?.items || []) {
       if (!it.product?.name) continue;
