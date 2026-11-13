@@ -10,7 +10,13 @@ Ask for a school and a day, for example "what's for lunch at Glover tomorrow". I
 3. A GraphQL call to `api.schoolnutritionandfitness.com/graphql` returns that month's items by day.
 4. Alexa reads the day's full menu, grouped as Entrées, Vegetables, Fruit, and Milk.
 
-## Set it up (about 15 minutes, free)
+## Set it up: import from GitHub (easiest, about 5 minutes)
+1. Sign in at https://developer.amazon.com/alexa/console/ask with the **same Amazon account your Echo uses**.
+2. **Create Skill**, name it "Marblehead Lunch", locale English (US), choose **Other > Custom > Alexa-hosted (Node.js)**, region US East.
+3. For the template, choose **Import skill** and paste `https://github.com/joedrinkscoffee/marblehead-lunch.git`.
+4. When it finishes, open **Build** and click **Build skill**, then go to **Test**, set testing to "Development", and type "ask marblehead lunch what's for lunch at glover tomorrow".
+
+## Set it up by hand (about 15 minutes, free)
 1. Sign in at https://developer.amazon.com/alexa/console/ask with the **same Amazon account your Echo uses**.
 2. **Create Skill**, name it "Marblehead Lunch", choose **Other > Custom > Alexa-hosted (Node.js)**, region US East, template "Start from scratch".
 3. **Build > Interaction Model > JSON Editor**: paste `skill-package/interactionModels/custom/en-US.json`, then **Save** and **Build skill**.
