@@ -123,4 +123,17 @@ async function lunchSpeech(schoolKey, date, whenWord) {
   return `Here's lunch at ${school.name} ${when}. ${groups.map((g) => `${g.label}: ${joinList(g.names)}.`).join(' ')}`;
 }
 
-module.exports = { SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, groupDay, tidy, lunchSpeech };
+// Turn Alexa's AMAZON.DATE value into a date, plus "today"/"tomorrow" when it fits.
+// No date said: before 1 PM answer for today, after that for tomorrow.
+function pickDate(slotValue, now = new Date()) {
+  const today = localDate(now);
+  if (slotValue && /^\d{4}-\d{2}-\d{2}$/.test(slotValue)) {
+    const [y, m, d] = slotValue.split('-').map(Number);
+    const diff = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(today.year, today.month, today.day)) / 86400000);
+    return { date: { year: y, month: m - 1, day: d }, word: diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : undefined };
+  }
+  const hour = +new Intl.DateTimeFormat('en-US', { timeZone: TZ, hour: 'numeric', hourCycle: 'h23' }).format(now);
+  return hour < 13 ? { date: today, word: 'today' } : { date: addDays(today, 1), word: 'tomorrow' };
+}
+
+module.exports = { pickDate, SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, groupDay, tidy, lunchSpeech };

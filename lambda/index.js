@@ -6,18 +6,7 @@ const menu = require('./menu');
 const DEFAULT_SCHOOL = process.env.DEFAULT_SCHOOL || null;
 const ASK_SCHOOL = 'Which school? Brown, Glover, Village, Vets, or the high school?';
 
-function pickDate(slotValue) {
-  const today = menu.localDate();
-  if (slotValue && /^\d{4}-\d{2}-\d{2}$/.test(slotValue)) {
-    const [y, m, d] = slotValue.split('-').map(Number);
-    const date = { year: y, month: m - 1, day: d };
-    const diff = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(today.year, today.month, today.day)) / 86400000);
-    return { date, word: diff === 0 ? 'today' : diff === 1 ? 'tomorrow' : undefined };
-  }
-  // No date said: before 1 PM answer for today, after that for tomorrow.
-  const hour = +new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' }).format(new Date());
-  return hour < 13 ? { date: today, word: 'today' } : { date: menu.addDays(today, 1), word: 'tomorrow' };
-}
+const pickDate = (v) => menu.pickDate(v);
 
 const LunchIntentHandler = {
   canHandle: (h) => Alexa.getRequestType(h.requestEnvelope) === 'IntentRequest'

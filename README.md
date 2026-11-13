@@ -38,3 +38,10 @@ cd lambda && npm install && npm test
 node try.js glover 2026-11-13
 ```
 (In a proxied sandbox, prefix with `NODE_USE_ENV_PROXY=1`.)
+
+## Backup: host the code on Cloudflare Workers (free)
+Use this if Alexa-hosted deploys fail (for example, a work network that intercepts Amazon's hosting).
+1. Sign up at https://dash.cloudflare.com (free plan), go to **Workers & Pages > Create > Create Worker**, name it `marblehead-lunch`, click **Deploy**.
+2. Click **Edit code**, replace everything with `worker/dist/worker.js` from this repo, and click **Deploy**. Copy the Worker URL (like `https://marblehead-lunch.<you>.workers.dev`).
+3. In the Alexa console, open the skill's **Build > Endpoint**, choose **HTTPS**, paste the Worker URL as the Default Region, choose "My development endpoint is a sub-domain of a domain that has a wildcard certificate from a certificate authority", and **Save**.
+4. Test as usual. Optional: in the Worker's **Settings > Variables**, add `SKILL_ID` (your skill id) so only your skill can call it.
