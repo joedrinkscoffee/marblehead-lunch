@@ -87,31 +87,28 @@ async function getMonth(menuId) {
     const json = await requestJson(GRAPHQL_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Origin: 'https://www.schoolnutritionandfitness.com' },
-      body: JSON.stringify({ query: `{ menu(id:"${menuId}") { items { day product { name category } } } }` }),
+      body: JSON.stringify({ query: `{ menu(id:"${menuId}") { items { day product { name category hide_on_calendars } } } }` }),
     });
     const byDay = {};
     for (const it of json?.data?.menu?.items || []) {
       if (!it.product?.name) continue;
+      // Items flagged hide_on_calendars (milk, bagel, sun butter, daily sandwiches...) are
+      // always-available options the published calendar doesn't show, so skip them too.
+      if (String(it.product.hide_on_calendars) === '1') continue;
       (byDay[it.day] ||= []).push({ name: it.product.name.trim(), category: it.product.category });
     }
     return byDay;
   });
 }
 
-// Group a day's full menu by category, in the order the menu lists categories.
-const CATEGORY_WORDS = { entrees: 'Entrées', grain: 'Grains', vegetable: 'Vegetables', fruit: 'Fruit', milk: 'Milk' };
-const CATEGORY_ORDER = ['entrees', 'grain', 'vegetable', 'fruit', 'milk'];
-function groupDay(byDay, day) {
-  const groups = new Map();
+// The day's items in the order the published calendar lists them, de-duplicated.
+function dayItems(byDay, day) {
+  const names = [];
   for (const i of byDay[day] || []) {
-    const key = (i.category || 'other').toLowerCase();
-    if (!groups.has(key)) groups.set(key, []);
     const name = tidy(i.name);
-    if (!groups.get(key).includes(name)) groups.get(key).push(name);
+    if (!names.includes(name)) names.push(name);
   }
-  const rank = (k) => (CATEGORY_ORDER.indexOf(k) + 1) || 99;
-  return [...groups.entries()].sort((x, y) => rank(x[0]) - rank(y[0]))
-    .map(([k, names]) => ({ label: CATEGORY_WORDS[k] || 'Also', names }));
+  return names;
 }
 
 function tidy(name) {
@@ -139,9 +136,9 @@ async function lunchSpeech(schoolKey, date, whenWord) {
   const menuId = await getMenuId(school.menuTypeId, date.year, date.month);
   if (!menuId) return `I couldn't find a ${school.name} lunch menu for that month yet.`;
   const byDay = await getMonth(menuId);
-  const groups = groupDay(byDay, date.day);
-  if (!groups.length) return `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`;
-  return `Here's lunch at ${school.name} ${when}. ${groups.map((g) => `${g.label}: ${joinList(g.names)}.`).join(' ')}`;
+  const names = dayItems(byDay, date.day);
+  if (!names.length) return `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`;
+  return `Lunch at ${school.name} ${when} is ${joinList(names)}.`;
 }
 
 // Turn Alexa's AMAZON.DATE value into a date, plus "today"/"tomorrow" when it fits.
@@ -157,4 +154,4 @@ function pickDate(slotValue, now = new Date()) {
   return hour < 13 ? { date: today, word: 'today' } : { date: addDays(today, 1), word: 'tomorrow' };
 }
 
-module.exports = { pickDate, SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, groupDay, tidy, lunchSpeech };
+module.exports = { pickDate, SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, dayItems, tidy, lunchSpeech };

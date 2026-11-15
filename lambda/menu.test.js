@@ -16,18 +16,13 @@ test('tidy makes names speakable', () => {
   assert.equal(m.tidy('Bagel, yogurt w/Cream Cheese'), 'Bagel, yogurt with Cream Cheese');
 });
 
-test('groupDay keeps every item, grouped by category', () => {
-  const byDay = { 4: [
-    { name: '1% Milk', category: 'Milk' }, { name: 'Pizza, Cheese', category: 'Entrees' },
-    { name: 'Pizza Bento Box', category: 'Entrees' }, { name: 'Apple Sauce', category: 'Fruit' },
-    { name: '1% Milk', category: 'Milk' },
+test('dayItems keeps calendar order and drops duplicates', () => {
+  const byDay = { 16: [
+    { name: 'B4L Pancake & Sausage' }, { name: 'Potato Puff Tots' }, { name: 'Protein Bento Box' },
+    { name: 'Pineapple' }, { name: 'Daily Fruit Offering' }, { name: 'Pineapple' },
   ] };
-  assert.deepEqual(m.groupDay(byDay, 4), [
-    { label: 'Entrées', names: ['Cheese Pizza', 'Pizza Bento Box'] },
-    { label: 'Fruit', names: ['Apple Sauce'] },
-    { label: 'Milk', names: ['1% Milk'] },
-  ]);
-  assert.deepEqual(m.groupDay(byDay, 9), []);
+  assert.deepEqual(m.dayItems(byDay, 16), ['Pancake and Sausage', 'Potato Puff Tots', 'Protein Bento Box', 'Pineapple', 'Daily Fruit Offering']);
+  assert.deepEqual(m.dayItems(byDay, 9), []);
 });
 
 test('addDays crosses month and year', () => {

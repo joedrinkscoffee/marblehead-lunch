@@ -122,28 +122,24 @@ var require_menu = __commonJS({
         const json = await requestJson(GRAPHQL_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json", Origin: "https://www.schoolnutritionandfitness.com" },
-          body: JSON.stringify({ query: `{ menu(id:"${menuId}") { items { day product { name category } } } }` })
+          body: JSON.stringify({ query: `{ menu(id:"${menuId}") { items { day product { name category hide_on_calendars } } } }` })
         });
         const byDay = {};
         for (const it of json?.data?.menu?.items || []) {
           if (!it.product?.name) continue;
+          if (String(it.product.hide_on_calendars) === "1") continue;
           (byDay[it.day] ||= []).push({ name: it.product.name.trim(), category: it.product.category });
         }
         return byDay;
       });
     }
-    var CATEGORY_WORDS = { entrees: "Entr\xE9es", grain: "Grains", vegetable: "Vegetables", fruit: "Fruit", milk: "Milk" };
-    var CATEGORY_ORDER = ["entrees", "grain", "vegetable", "fruit", "milk"];
-    function groupDay(byDay, day) {
-      const groups = /* @__PURE__ */ new Map();
+    function dayItems(byDay, day) {
+      const names = [];
       for (const i of byDay[day] || []) {
-        const key = (i.category || "other").toLowerCase();
-        if (!groups.has(key)) groups.set(key, []);
         const name = tidy(i.name);
-        if (!groups.get(key).includes(name)) groups.get(key).push(name);
+        if (!names.includes(name)) names.push(name);
       }
-      const rank = (k) => CATEGORY_ORDER.indexOf(k) + 1 || 99;
-      return [...groups.entries()].sort((x, y) => rank(x[0]) - rank(y[0])).map(([k, names]) => ({ label: CATEGORY_WORDS[k] || "Also", names }));
+      return names;
     }
     function tidy(name) {
       let n = name.replace(/^B4L\s+/i, "").replace(/^Bfast\b/i, "Breakfast");
@@ -167,9 +163,9 @@ var require_menu = __commonJS({
       const menuId = await getMenuId(school.menuTypeId, date.year, date.month);
       if (!menuId) return `I couldn't find a ${school.name} lunch menu for that month yet.`;
       const byDay = await getMonth(menuId);
-      const groups = groupDay(byDay, date.day);
-      if (!groups.length) return `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`;
-      return `Here's lunch at ${school.name} ${when}. ${groups.map((g) => `${g.label}: ${joinList(g.names)}.`).join(" ")}`;
+      const names = dayItems(byDay, date.day);
+      if (!names.length) return `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`;
+      return `Lunch at ${school.name} ${when} is ${joinList(names)}.`;
     }
     function pickDate2(slotValue, now = /* @__PURE__ */ new Date()) {
       const today = localDate(now);
@@ -181,7 +177,7 @@ var require_menu = __commonJS({
       const hour = +new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" }).format(now);
       return hour < 13 ? { date: today, word: "today" } : { date: addDays(today, 1), word: "tomorrow" };
     }
-    module.exports = { pickDate: pickDate2, SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, groupDay, tidy, lunchSpeech };
+    module.exports = { pickDate: pickDate2, SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, dayItems, tidy, lunchSpeech };
   }
 });
 
