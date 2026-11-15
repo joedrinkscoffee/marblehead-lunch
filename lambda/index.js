@@ -23,45 +23,14 @@ const LunchIntentHandler = {
     }
     h.attributesManager.setSessionAttributes({});
     const { date, word } = pickDate(spokenDate);
-    let report;
+    let speech;
     try {
-      report = await menu.lunchReport(schoolKey, date, word);
+      speech = await menu.lunchSpeech(schoolKey, date, word);
     } catch (e) {
       console.error(e);
-      const speech = "Sorry, I couldn't reach the school lunch menu right now. Please try again in a bit.";
-      return h.responseBuilder.speak(speech).getResponse();
+      speech = "Sorry, I couldn't reach the school lunch menu right now. Please try again in a bit.";
     }
-    if (!report.always) {
-      return h.responseBuilder.speak(report.speech).withSimpleCard('School lunch', report.speech).getResponse();
-    }
-    // Offer the always-available items as a follow-up; keep the session open for yes or no.
-    h.attributesManager.setSessionAttributes({ pendingAlways: report.always });
-    return h.responseBuilder
-      .speak(`${report.speech} ${menu.ASK_ALWAYS}`)
-      .reprompt(menu.ASK_ALWAYS)
-      .withSimpleCard('School lunch', `${report.speech}\n\n${report.always}`)
-      .getResponse();
-  },
-};
-
-const isIntent = (h, name) => Alexa.getRequestType(h.requestEnvelope) === 'IntentRequest'
-  && Alexa.getIntentName(h.requestEnvelope) === name;
-
-const YesHandler = {
-  canHandle: (h) => isIntent(h, 'AMAZON.YesIntent'),
-  handle: (h) => {
-    const { pendingAlways } = h.attributesManager.getSessionAttributes();
-    h.attributesManager.setSessionAttributes({});
-    if (!pendingAlways) return HelpHandler.handle(h);
-    return h.responseBuilder.speak(pendingAlways).getResponse();
-  },
-};
-
-const NoHandler = {
-  canHandle: (h) => isIntent(h, 'AMAZON.NoIntent'),
-  handle: (h) => {
-    h.attributesManager.setSessionAttributes({});
-    return h.responseBuilder.speak('Okay. Enjoy lunch!').getResponse();
+    return h.responseBuilder.speak(speech).withSimpleCard('School lunch', speech).getResponse();
   },
 };
 
@@ -92,7 +61,7 @@ const ErrorHandler = {
 };
 
 exports.handler = Alexa.SkillBuilders.custom()
-  .addRequestHandlers(LunchIntentHandler, YesHandler, NoHandler, LaunchHandler, HelpHandler, StopHandler)
+  .addRequestHandlers(LunchIntentHandler, LaunchHandler, HelpHandler, StopHandler)
   .addErrorHandlers(ErrorHandler)
   .lambda();
 exports.pickDate = pickDate;

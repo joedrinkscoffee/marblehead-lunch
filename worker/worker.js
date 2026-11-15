@@ -25,9 +25,7 @@ async function lunch(env, req, attrs) {
   if (!school) return reply(ASK_SCHOOL, { endSession: false, attributes: { pendingDate: spokenDate } });
   const { date, word } = pickDate(menu, spokenDate);
   try {
-    const r = await menu.lunchReport(school, date, word);
-    if (!r.always) return reply(r.speech);
-    return reply(`${r.speech} ${menu.ASK_ALWAYS}`, { endSession: false, attributes: { pendingAlways: r.always } });
+    return reply(await menu.lunchSpeech(school, date, word));
   } catch (e) {
     console.error(e);
     return reply("Sorry, I couldn't reach the school lunch menu right now. Please try again in a bit.");
@@ -47,9 +45,7 @@ export default {
     if (req.type === 'IntentRequest') {
       const name = req.intent?.name;
       if (name === 'GetLunchIntent') return lunch(env, req, attrs);
-      if (name === 'AMAZON.YesIntent' && attrs.pendingAlways) return reply(attrs.pendingAlways);
-      if (name === 'AMAZON.NoIntent') return reply('Okay. Enjoy lunch!');
-      if (name === 'AMAZON.HelpIntent' || name === 'AMAZON.YesIntent') return reply("You can ask what's for lunch at any Marblehead school, for example, what's for lunch at Glover tomorrow.", { endSession: false });
+      if (name === 'AMAZON.HelpIntent') return reply("You can ask what's for lunch at any Marblehead school, for example, what's for lunch at Glover tomorrow.", { endSession: false });
       return reply('Okay.');
     }
     return Response.json({ version: '1.0', response: { shouldEndSession: true } });
