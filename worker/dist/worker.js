@@ -165,17 +165,22 @@ var require_menu = __commonJS({
     function weekday(d) {
       return DAY_NAMES[new Date(Date.UTC(d.year, d.month, d.day)).getUTCDay()];
     }
-    async function lunchSpeech(schoolKey, date, whenWord) {
+    async function lunchReport(schoolKey, date, whenWord) {
       const school = SCHOOLS[schoolKey];
       const when = whenWord || `on ${weekday(date)}`;
       const menuId = await getMenuId(school.menuTypeId, date.year, date.month);
-      if (!menuId) return `I couldn't find a ${school.name} lunch menu for that month yet.`;
+      if (!menuId) return { speech: `I couldn't find a ${school.name} lunch menu for that month yet.`, always: null };
       const byDay = await getMonth(menuId);
       const { main, always } = dayItems(byDay, date.day);
-      if (!main.length) return `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`;
-      let speech = `Lunch at ${school.name} ${when} is ${joinList(main)}.`;
-      if (always.length) speech += ` The always-available items are ${joinList(always)}.`;
-      return speech;
+      if (!main.length) return { speech: `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`, always: null };
+      return {
+        speech: `Lunch at ${school.name} ${when} is ${joinList(main)}.`,
+        always: always.length ? `The always-available items are ${joinList(always)}.` : null
+      };
+    }
+    async function lunchSpeech(schoolKey, date, whenWord) {
+      const r = await lunchReport(schoolKey, date, whenWord);
+      return r.always ? `${r.speech} ${r.always}` : r.speech;
     }
     function pickDate2(slotValue, now = /* @__PURE__ */ new Date()) {
       const today = localDate(now);
@@ -187,7 +192,7 @@ var require_menu = __commonJS({
       const hour = +new Intl.DateTimeFormat("en-US", { timeZone: TZ, hour: "numeric", hourCycle: "h23" }).format(now);
       return hour < 13 ? { date: today, word: "today" } : { date: addDays(today, 1), word: "tomorrow" };
     }
-    module.exports = { pickDate: pickDate2, SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, dayItems, tidy, lunchSpeech };
+    module.exports = { pickDate: pickDate2, lunchReport, ASK_ALWAYS: "Do you want to hear the always-available items?", SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, dayItems, tidy, lunchSpeech };
   }
 });
 
@@ -217,7 +222,9 @@ async function lunch(env, req, attrs) {
   if (!school) return reply(ASK_SCHOOL, { endSession: false, attributes: { pendingDate: spokenDate } });
   const { date, word } = pickDate(import_menu.default, spokenDate);
   try {
-    return reply(await import_menu.default.lunchSpeech(school, date, word));
+    const r = await import_menu.default.lunchReport(school, date, word);
+    if (!r.always) return reply(r.speech);
+    return reply(`${r.speech} ${import_menu.default.ASK_ALWAYS}`, { endSession: false, attributes: { pendingAlways: r.always } });
   } catch (e) {
     console.error(e);
     return reply("Sorry, I couldn't reach the school lunch menu right now. Please try again in a bit.");
@@ -236,7 +243,9 @@ var worker_default = {
     if (req.type === "IntentRequest") {
       const name = req.intent?.name;
       if (name === "GetLunchIntent") return lunch(env, req, attrs);
-      if (name === "AMAZON.HelpIntent") return reply("You can ask what's for lunch at any Marblehead school, for example, what's for lunch at Glover tomorrow.", { endSession: false });
+      if (name === "AMAZON.YesIntent" && attrs.pendingAlways) return reply(attrs.pendingAlways);
+      if (name === "AMAZON.NoIntent") return reply("Okay. Enjoy lunch!");
+      if (name === "AMAZON.HelpIntent" || name === "AMAZON.YesIntent") return reply("You can ask what's for lunch at any Marblehead school, for example, what's for lunch at Glover tomorrow.", { endSession: false });
       return reply("Okay.");
     }
     return Response.json({ version: "1.0", response: { shouldEndSession: true } });
