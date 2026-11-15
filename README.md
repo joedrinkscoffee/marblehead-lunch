@@ -8,7 +8,7 @@ Ask for a school and a day, for example "what's for lunch at Glover tomorrow". I
 1. Each school's lunch menu has a permanent **menu type** id (in `lambda/menu.js`).
 2. `menutypeController.php/show?_id=<menuType>` lists that school's monthly menus; we pick the current month.
 3. A GraphQL call to `api.schoolnutritionandfitness.com/graphql` returns that month's items by day.
-4. Alexa reads the day's menu exactly as the published calendar shows it. Items the district marks as hidden from the calendar (milk, bagel, sun butter, and the other always-available options) are left out.
+4. Alexa reads the day's menu exactly as the published calendar shows it, then lists the always-available items the district hides from the calendar (bagel, sun butter, daily sandwich, etc.). Milk and other drinks are left out.
 
 ## Set it up: import from GitHub (easiest, about 5 minutes)
 1. Sign in at https://developer.amazon.com/alexa/console/ask with the **same Amazon account your Echo uses**.

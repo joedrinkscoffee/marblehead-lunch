@@ -127,24 +127,32 @@ var require_menu = __commonJS({
         const byDay = {};
         for (const it of json?.data?.menu?.items || []) {
           if (!it.product?.name) continue;
-          if (String(it.product.hide_on_calendars) === "1") continue;
-          (byDay[it.day] ||= []).push({ name: it.product.name.trim(), category: it.product.category });
+          (byDay[it.day] ||= []).push({
+            name: it.product.name.trim(),
+            category: it.product.category,
+            always: String(it.product.hide_on_calendars) === "1"
+          });
         }
         return byDay;
       });
     }
+    var isDrink = (i) => /^milk$/i.test(i.category || "") || /\b(milk|juice|water)\b/i.test(i.name);
     function dayItems(byDay, day) {
-      const names = [];
+      const main = [];
+      const always = [];
       for (const i of byDay[day] || []) {
+        const list = i.always ? always : main;
+        if (i.always && isDrink(i)) continue;
         const name = tidy(i.name);
-        if (!names.includes(name)) names.push(name);
+        if (!list.includes(name)) list.push(name);
       }
-      return names;
+      return { main, always };
     }
     function tidy(name) {
       let n = name.replace(/^B4L\s+/i, "").replace(/^Bfast\b/i, "Breakfast");
       const m = n.match(/^([^,]+),\s*([^,]+)$/);
       if (m && !/w\//.test(n)) n = `${m[2]} ${m[1]}`;
+      else n = n.replace(/,\s*/g, " and ");
       if (n === n.toUpperCase()) n = n.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
       return n.replace(/&/g, "and").replace(/\s*w\/\s*/gi, " with ").replace(/\s+/g, " ").trim();
     }
@@ -163,9 +171,11 @@ var require_menu = __commonJS({
       const menuId = await getMenuId(school.menuTypeId, date.year, date.month);
       if (!menuId) return `I couldn't find a ${school.name} lunch menu for that month yet.`;
       const byDay = await getMonth(menuId);
-      const names = dayItems(byDay, date.day);
-      if (!names.length) return `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`;
-      return `Lunch at ${school.name} ${when} is ${joinList(names)}.`;
+      const { main, always } = dayItems(byDay, date.day);
+      if (!main.length) return `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`;
+      let speech = `Lunch at ${school.name} ${when} is ${joinList(main)}.`;
+      if (always.length) speech += ` The always-available items are ${joinList(always)}.`;
+      return speech;
     }
     function pickDate2(slotValue, now = /* @__PURE__ */ new Date()) {
       const today = localDate(now);
