@@ -104,20 +104,16 @@ async function getMonth(menuId) {
   });
 }
 
-const isDrink = (i) => /^milk$/i.test(i.category || '') || /\b(milk|juice|water)\b/i.test(i.name);
-
-// Splits a day into the calendar's lunch items (in calendar order) and the
-// always-available extras, de-duplicated. Drinks are left out of the extras.
+// The day's lunch as the published calendar shows it, in calendar order, de-duplicated.
+// Always-available items (flagged hide_on_calendars) are left out.
 function dayItems(byDay, day) {
-  const main = [];
-  const always = [];
+  const names = [];
   for (const i of byDay[day] || []) {
-    const list = i.always ? always : main;
-    if (i.always && isDrink(i)) continue;
+    if (i.always) continue;
     const name = tidy(i.name);
-    if (!list.includes(name)) list.push(name);
+    if (!names.includes(name)) names.push(name);
   }
-  return { main, always };
+  return names;
 }
 
 function tidy(name) {
@@ -140,25 +136,15 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 function weekday(d) { return DAY_NAMES[new Date(Date.UTC(d.year, d.month, d.day)).getUTCDay()]; }
 
 // whenWord: "today" | "tomorrow" | undefined (then we use the weekday name)
-// Returns { speech, always }: speech is the day's lunch, always is the spoken
-// always-available sentence (or null) for a follow-up question.
-async function lunchReport(schoolKey, date, whenWord) {
+async function lunchSpeech(schoolKey, date, whenWord) {
   const school = SCHOOLS[schoolKey];
   const when = whenWord || `on ${weekday(date)}`;
   const menuId = await getMenuId(school.menuTypeId, date.year, date.month);
-  if (!menuId) return { speech: `I couldn't find a ${school.name} lunch menu for that month yet.`, always: null };
+  if (!menuId) return `I couldn't find a ${school.name} lunch menu for that month yet.`;
   const byDay = await getMonth(menuId);
-  const { main, always } = dayItems(byDay, date.day);
-  if (!main.length) return { speech: `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`, always: null };
-  return {
-    speech: `Lunch at ${school.name} ${when} is ${joinList(main)}.`,
-    always: always.length ? `The always-available items are ${joinList(always)}.` : null,
-  };
-}
-
-async function lunchSpeech(schoolKey, date, whenWord) {
-  const r = await lunchReport(schoolKey, date, whenWord);
-  return r.always ? `${r.speech} ${r.always}` : r.speech;
+  const names = dayItems(byDay, date.day);
+  if (!names.length) return `There's no lunch on the ${school.name} menu ${when}. It may be a weekend, holiday, or day off.`;
+  return `Lunch at ${school.name} ${when} is ${joinList(names)}.`;
 }
 
 // Turn Alexa's AMAZON.DATE value into a date, plus "today"/"tomorrow" when it fits.
@@ -174,4 +160,4 @@ function pickDate(slotValue, now = new Date()) {
   return hour < 13 ? { date: today, word: 'today' } : { date: addDays(today, 1), word: 'tomorrow' };
 }
 
-module.exports = { pickDate, lunchReport, ASK_ALWAYS: 'Do you want to hear the always-available items?', SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, dayItems, tidy, lunchSpeech };
+module.exports = { pickDate, SCHOOLS, resolveSchool, localDate, addDays, weekday, getMenuId, getMonth, dayItems, tidy, lunchSpeech };
